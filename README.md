@@ -48,3 +48,37 @@ No hay prórroga: suban avances parciales con commits pequeños durante la prueb
 | [`test-manager-library-3145556-page`](https://github.com/code-sena/test-manager-library-3145556-page) | Sitio público estático de presentación |
 | [`test-manager-library-3145556-infra`](https://github.com/code-sena/test-manager-library-3145556-infra) | Contenedores, red, volúmenes y motor de base de datos vacío |
 | [`test-manager-library-3145556-tool`](https://github.com/code-sena/test-manager-library-3145556-tool) | Utilidades: sembrador de datos de demostración |
+
+---
+
+## Cómo levantar el sistema (T-20)
+
+Requiere Docker. Los repositorios `api` y `app` se esperan clonados junto a este (`../test-manager-library-3145556-api`, `../test-manager-library-3145556-app`); si están en otra ruta, cámbialo en `API_CONTEXT` y `APP_CONTEXT`.
+
+```bash
+cp .env.example .env      # completar POSTGRES_PASSWORD, APP_KEY, JWT_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD
+docker compose up -d --build
+curl http://localhost:8000/api/v1/health   # {"status":"ok"}
+```
+
+| Servicio | Qué es | Puerto |
+|---|---|---|
+| `db` | PostgreSQL 16, **motor vacío**: solo usuario, base y volumen | 5432 |
+| `api` | Laravel; al arrancar corre `php artisan migrate --force` y `php artisan library:bootstrap-admin` | 8000 |
+| `app` | Frontend React | 5173 |
+
+Red `library-net`; volúmenes `db-data` (datos) y `covers` (portadas).
+
+## Evidencia de que la base arranca vacía (RNF-5, Art. V)
+
+```bash
+docker compose up -d db
+docker compose exec db psql -U library -d library -c '\dn'      # sin esquema library
+docker compose exec db psql -U library -d library -c '\dt *.*' | grep -c library   # 0
+```
+
+El esquema, las tablas y la semilla las crean las migraciones de `api` (ADR-001). Este repositorio no contiene `CREATE TABLE`:
+
+```bash
+grep -ri "create table" . --include=* -l   # sin resultados
+```
